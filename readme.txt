@@ -1,1 +1,1 @@
-PyTorch implementation
+PyTorch implementation for CU-Net
