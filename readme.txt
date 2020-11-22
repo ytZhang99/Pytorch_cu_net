@@ -1,1 +1,1 @@
-PyTorch implementation for CU-Net
+PyTorch implementation for TPAMI-CU-Net
