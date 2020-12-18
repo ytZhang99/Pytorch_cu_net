@@ -12,7 +12,7 @@ def extract_y(img_bgr):
 
 # image path
 source_path = 'gt_set/'
-save_path = './'
+save_path = 'ms_set/'
 save_name = 'gt'
 
 # image information
