@@ -20,15 +20,15 @@ class Trainer:
     def __init__(self):
         self.epoch = 1000
         self.batch_size = 64
-        self.criterion = MSELoss(reduction='sum')
+        self.criterion = MSELoss(reduction='mean')
         self.lr = 0.0001
         self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.5], std=[0.5])])
-        self.train_set = MSDataset(self.transform)
+        self.train_set = MSDataset()
         self.train_loader = DataLoader(self.train_set, batch_size=self.batch_size,
                                        shuffle=True, num_workers=0)
         self.model = CUNet().cuda()
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=75, gamma=0.5)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=30, gamma=0.9)
         self.train_loss = []
         self.val_psnr = []
 
@@ -51,20 +51,17 @@ class Trainer:
                 rgb = rgb.cuda()
                 lr = lr.cuda()
 
-                save_image(hr, 'gt_patches/gt' + str(ep) + '.bmp')
-                save_image(lr, 'train_patches/lr' + str(ep) + '.bmp')
-
                 self.optimizer.zero_grad()
                 torch.cuda.synchronize()
                 start_time = time.time()
                 z = self.model(lr, rgb)
-                loss = self.criterion(z, hr) / hr.shape[0]
+                loss = 1000 * self.criterion(z, hr)
                 epoch_loss.append(loss.item())
                 loss.backward()
                 self.optimizer.step()
                 torch.cuda.synchronize()
                 end_time = time.time()
-                if batch % 10 == 0:
+                if batch % 50 == 0 and batch != 0:
                     print('Epoch:{}\tcur/all:{}/{}\tAvg Loss:{:.4f}\tTime:{:.2f}'.format(ep, batch, len(self.train_loader), loss.item(), end_time-start_time))
 
             self.scheduler.step()
@@ -75,14 +72,14 @@ class Trainer:
                 'train_loss': self.train_loss
             }
             torch.save(state, os.path.join('model', 'latest.pth'))
-            if ep % 10 == 0:
+            if ep % 5 == 0:
                 torch.save(state, os.path.join('model', str(ep)+'.pth'))
             matplotlib.use('Agg')
             fig1 = plt.figure()
             plot_loss_list = self.train_loss
             plt.plot(plot_loss_list)
             plt.savefig('train_loss_curve.png')
-            
+
 
             val_psnr = self.test()
             print(val_psnr)
@@ -90,7 +87,7 @@ class Trainer:
             fig2 = plt.figure()
             plt.plot(self.val_psnr)
             plt.savefig('val_curve.png')
-            
+
             plt.close('all')
 
         print('===> Finished Training!')
@@ -109,8 +106,8 @@ class Trainer:
         save_path = 'test_result/'
         num_img = len(gt_img)
 
-        # state = torch.load('model/latest.pth')
-        # self.model.load_state_dict(state['model'])
+        state = torch.load('model/latest.pth')
+        self.model.load_state_dict(state['model'])
         self.model.eval()
 
         with torch.no_grad():

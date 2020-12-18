@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class Prediction(nn.Module):
@@ -13,8 +14,7 @@ class Prediction(nn.Module):
         self.layer_in = nn.Conv2d(in_channels=self.in_channel, out_channels=self.num_filters,
                                   kernel_size=self.kernel_size, padding=4, stride=1, bias=False)
         nn.init.xavier_uniform_(self.layer_in.weight.data)
-        self.lam_in = nn.Parameter(torch.zeros(size=[1, self.num_filters, 1, 1]))
-        nn.init.xavier_uniform_(self.lam_in.data)
+        self.lam_in = nn.Parameter(torch.Tensor([0.01]))
 
         self.lam_i = []
         self.layer_down = []
@@ -34,30 +34,29 @@ class Prediction(nn.Module):
             setattr(self, up_conv, layer_3)
             self.layer_up.append(getattr(self, up_conv))
 
-            lam_ = nn.Parameter(torch.zeros(size=[1, self.num_filters, 1, 1]))
-            lam_.data = nn.init.xavier_uniform_(lam_)
+            lam_ = nn.Parameter(torch.Tensor([0.01]))
             setattr(self, lam_id, lam_)
             self.lam_i.append(getattr(self, lam_id))
 
     def forward(self, mod):
         p1 = self.layer_in(mod)
-        tensor = self.eta_func(p1, self.lam_in)
+        tensor = torch.mul(torch.sign(p1), F.relu(torch.abs(p1) - self.lam_in))
 
         for i in range(self.num_layers):
             p3 = self.layer_down[i](tensor)
             p4 = self.layer_up[i](p3)
             p5 = tensor - p4
             p6 = torch.add(p1, p5)
-            tensor = self.eta_func(p6, self.lam_i[i])
+            tensor = torch.mul(torch.sign(p6), F.relu(torch.abs(p6) - self.lam_i[i]))
         return tensor
 
-    def eta_func(self, r, lam):
-        thresh = torch.zeros(lam.shape)
-        thresh = thresh.cuda()
-        lam = lam.cuda()
-        lam = torch.max(lam, thresh)
-        output = torch.sign(r) * torch.max(torch.abs(r) - lam, thresh)
-        return output
+    # def eta_func(self, r, lam):
+    #     thresh = torch.zeros(lam.shape)
+    #     thresh = thresh.cuda()
+    #     lam = lam.cuda()
+    #     lam = torch.max(lam, thresh)
+    #     output = torch.sign(r) * torch.max(torch.abs(r) - lam, thresh)
+    #     return output
 
 
 class decoder(nn.Module):
@@ -108,12 +107,3 @@ class CUNet(nn.Module):
         z = self.net_z(p_xy)
         f_pred = self.decoder(u, z)
         return f_pred
-
-
-#
-#
-# net = CUNet()
-# for name in net.state_dict():
-#     print(name)
-# print(net.state_dict()['net_u.lam_in'])
-
