@@ -10,7 +10,7 @@ For the official TensorFlow code, please jump to [[Official Code]](https://githu
 ## Prepair training and testing dataset
 ### training dataset
 1. Put Depth/RGB/Groundtruth images in `depth_set/rgb_set/gt_set` in the directory `train_set`, respectively.  
-2. Open img2npy.py. Modify the variable `source_path` in line 14 to `depth_set/`, `rgb_set/` or `gt_set/` and the variable `save_name` in line 16 to `depth`, `rgb` or `gt` correspondingly.
+2. Open `img2npy.py`. Modify the variable `source_path` in line 14 to `depth_set/`, `rgb_set/` or `gt_set/` and the variable `save_name` in line 16 to `depth`, `rgb` or `gt` correspondingly.
 3. Run the following command to transfer images to .npy files. These .npy files are placed in `train_set/`.  
 ```
 python img2npy.py
